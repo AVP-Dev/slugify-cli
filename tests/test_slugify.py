@@ -255,6 +255,12 @@ class DiacriticsAndLigatures(unittest.TestCase):
         self.assertEqual(slugify("Àéîõü"), "aeiou")
 
     def test_letters_nfkd_cannot_decompose_are_mapped(self):
+        """These must be folded before the separator pass.
+
+        Unmapped, they become hyphens which the edge trim then eats, so the
+        damage is silent truncation rather than a stray dash: 'Aø' would come
+        out 'a' instead of 'ao', and 'Ærø' just 'r'.
+        """
         cases = {
             "Ærø": "aero",
             "Straße": "strasse",
@@ -263,6 +269,9 @@ class DiacriticsAndLigatures(unittest.TestCase):
             "þorn": "thorn",
             "Œuvre": "oeuvre",
             "ı": "i",
+            "Aø": "ao",
+            "ħ": "h",
+            "ŋ": "ng",
         }
         for text, expected in cases.items():
             with self.subTest(text=text):

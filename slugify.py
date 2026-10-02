@@ -71,8 +71,9 @@ def slugify(text: str) -> str:
     # 1. Case folding, while the text is still recognisable as letters.
     text = text.lower()
 
-    # 2. Latin letters NFKD leaves alone. Must precede step 4, since ø is no
-    #    more decomposable after normalisation than before it.
+    # 2. Latin letters NFKD leaves alone. Their position relative to step 4 is
+    #    irrelevant -- NFKD cannot touch what it does not decompose -- but they
+    #    must land before step 5, which would otherwise flatten ø into a hyphen.
     text = text.translate(_LIGATURE_MAP)
 
     # 3. Cyrillic to Latin, while its diacritics are still intact. See the

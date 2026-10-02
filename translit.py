@@ -18,10 +18,15 @@ Two dictionaries live here:
     its input before looking anything up.
 
 ``LIGATURES``
-    Latin letters that NFKD does *not* decompose. These must be folded *before*
-    normalisation runs, otherwise they survive as stray characters and get
-    flattened into a hyphen by the separator pass (``Aø`` would become ``a-``
-    instead of ``ao``).
+    Latin letters that NFKD does *not* decompose (``ø``, ``æ``, ``ß``, ``ł``,
+    ``þ``, ``đ`` and friends). Because NFKD cannot split them, their position
+    relative to normalisation does not matter. What does matter is that they are
+    folded before the separator pass: anything still unmapped by then survives
+    as a stray character and becomes a hyphen, which the edge trim then eats --
+    ``Aø`` would come out ``a`` rather than ``ao``, and ``Ærø`` ``r``.
+
+    Every key here is also lowercase, which is why :func:`slugify.slugify`
+    lowercases its input before looking anything up.
 """
 
 from __future__ import annotations
