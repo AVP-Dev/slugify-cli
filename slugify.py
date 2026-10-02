@@ -42,8 +42,9 @@ from translit import CYRILLIC, LIGATURES
 
 __all__ = ["slugify", "main"]
 
-#: Static-data invariant: if a character ever appears in both tables, the
-#: outcome would depend on step order rather than on intent.
+# Static-data invariant: if a character ever appears in both tables, the outcome
+# would depend on step order rather than on intent. Also asserted by the test
+# suite, since python -O strips this.
 assert not (CYRILLIC.keys() & LIGATURES.keys()), "translit tables overlap"
 
 #: Anything outside this set is a separator. An explicit ASCII whitelist rather
@@ -91,23 +92,17 @@ def slugify(text: str) -> str:
     return text.strip("-")
 
 
-#: The only flags this tool has. Because the namespace is this small, any other
-#: argument starting with a dash can be treated as text rather than as a
-#: misspelled flag -- see :func:`_wants_help`.
+#: The only flags this tool has.
 _HELP_FLAGS = frozenset({"-h", "--help"})
 
 
 def _wants_help(argv: list[str]) -> bool:
-    """True when the arguments are a help request rather than text to slugify.
+    """True when the arguments ask for help before any text is seen.
 
-    argparse cannot express "a positional that may begin with a dash", and for
-    this tool a leading dash is far more likely to be content than an option:
-    hyphens are what it emits, so ``slugify '---'`` and ``slugify '-tagged'``
-    are ordinary calls, not flag attempts. Since ``-h``/``--help`` are the only
-    flags, anything else starting with a dash is content.
-
-    ``--`` keeps its standard meaning and is handled by argparse itself, so
-    ``slugify -- -h`` still slugifies ``-h``.
+    This is the one flag decision that must be made before parsing, because the
+    other branch hands the whole argv to the slugifier as text. Later arguments
+    need no special case: argparse still recognises ``--help`` in the ordinary
+    path, so ``slugify text --help`` prints help too.
     """
     return bool(argv) and argv[0] in _HELP_FLAGS
 
@@ -145,14 +140,19 @@ def main(argv: list[str] | None = None) -> int:
         argv = sys.argv[1:]
 
     if _wants_help(argv):
-        parser.parse_args(["--help"])
-        return 0  # unreachable: parse_args exits
+        parser.print_help()
+        return 0
 
     if argv and argv[0].startswith("-") and argv[0] != "--":
-        # Decided before parsing, so argparse never gets a chance to print a
-        # usage error we are about to ignore. Only the first argument is
-        # ambiguous; after real text a leading dash is a genuine flag attempt
-        # and stays an error.
+        # argparse cannot express "a positional that may begin with a dash", and
+        # for this tool a leading dash is far more likely to be content than an
+        # option: hyphens are what it emits, so `slugify '---'` and `slugify
+        # '-tagged'` are ordinary calls. Since -h/--help are the only flags,
+        # anything else starting with a dash is text.
+        #
+        # Decided here, before parsing, so argparse never prints a usage error
+        # we are about to ignore. Only the first argument is ambiguous; after
+        # real text a leading dash is a genuine flag attempt and stays an error.
         words = argv
     else:
         # Handles "--" itself, and still reports unknown flags after text.

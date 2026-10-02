@@ -432,6 +432,12 @@ class LeadingDashes(unittest.TestCase):
         self.assertIn("usage", self.run_cli("-h").stdout.lower())
         self.assertIn("usage", self.run_cli("--help").stdout.lower())
 
+    def test_help_is_recognised_after_text_too(self):
+        """--help is unambiguous, so argparse handles it in the normal path."""
+        proc = self.run_cli("text", "--help")
+        self.assertEqual(proc.returncode, 0)
+        self.assertIn("usage", proc.stdout.lower())
+
     def test_flag_after_real_text_is_still_an_error(self):
         """Only the first argument is ambiguous; after text a flag is a flag."""
         proc = self.run_cli("Hello", "--nope")

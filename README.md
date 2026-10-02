@@ -151,7 +151,7 @@ which would leak into a slug.
 ## Development
 
 ```console
-make test    # 61 tests
+make test    # 62 tests
 make demo    # pipe a sample through the CLI
 ```
 
