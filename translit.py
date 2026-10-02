@@ -17,10 +17,19 @@ Two dictionaries live here:
 
 from __future__ import annotations
 
-#: Cyrillic -> Latin, web-slug convention (``х`` -> ``kh``, ``щ`` -> ``shch``).
+#: Cyrillic -> Latin, following the practical ISO 9 / BGN web-slug convention
+#: (``х`` -> ``kh``, ``щ`` -> ``shch``, ``й`` -> ``y``).
 #:
 #: Kept as explicit pairs rather than a ``str.translate`` table so that every
 #: letter is visible in one place and easy to audit for typos.
+#:
+#: One flat table cannot be right for two languages at once. Russian wins here
+#: because it dominates Cyrillic slugs, and it is what fixes ``й``: ISO 9 gives
+#: ``y`` (``mayon``, ``kray``, ``chay``) where Django/Unidecode gives ``i``
+#: (``maion``, ``krai``, ``chai``). The cost is Ukrainian, whose official KMU
+#: 2023 romanisation also maps ``и`` to ``y``; doing that here would turn
+#: Russian ``мир`` into ``myr``, so ``Київ`` comes out as ``kiyiv``, not
+#: ``kyiv``. See the README's limitations section.
 CYRILLIC: dict[str, str] = {
     # Russian
     "а": "a",
@@ -33,7 +42,7 @@ CYRILLIC: dict[str, str] = {
     "ж": "zh",
     "з": "z",
     "и": "i",
-    "й": "i",
+    "й": "y",
     "к": "k",
     "л": "l",
     "м": "m",
