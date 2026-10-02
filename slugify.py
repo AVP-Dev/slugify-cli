@@ -88,6 +88,27 @@ def slugify(text: str) -> str:
     return text.strip("-")
 
 
+#: The only flags this tool has. Because the namespace is this small, any other
+#: argument starting with a dash can be treated as text rather than as a
+#: misspelled flag -- see :func:`_wants_help`.
+_HELP_FLAGS = frozenset({"-h", "--help"})
+
+
+def _wants_help(argv: list[str]) -> bool:
+    """True when the arguments are a help request rather than text to slugify.
+
+    argparse cannot express "a positional that may begin with a dash", and for
+    this tool a leading dash is far more likely to be content than an option:
+    hyphens are what it emits, so ``slugify '---'`` and ``slugify '-tagged'``
+    are ordinary calls, not flag attempts. Since ``-h``/``--help`` are the only
+    flags, anything else starting with a dash is content.
+
+    ``--`` keeps its standard meaning and is handled by argparse itself, so
+    ``slugify -- -h`` still slugifies ``-h``.
+    """
+    return bool(argv) and argv[0] in _HELP_FLAGS
+
+
 def main(argv: list[str] | None = None) -> int:
     """Read text from ``argv`` or stdin and print the slug. Return exit code.
 
@@ -104,7 +125,10 @@ def main(argv: list[str] | None = None) -> int:
             "With no ARGUMENTS, reads stdin instead. Examples:\n"
             "  slugify 'Привет, мир!'      -> privet-mir\n"
             "  echo 'Hello World' | slugify -> hello-world\n"
-            "  slugify '!!!'                -> prints nothing (empty slug)"
+            "  slugify '!!!'                -> prints nothing (empty slug)\n"
+            "\n"
+            "-h/--help is the only option. Any other argument starting with a\n"
+            "dash is treated as text, so 'slugify ---' is valid."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -113,10 +137,26 @@ def main(argv: list[str] | None = None) -> int:
         nargs="*",
         help="text to slugify; several arguments are joined with single spaces",
     )
-    args = parser.parse_args(argv)
 
-    if args.text:
-        source = " ".join(args.text)
+    if argv is None:
+        argv = sys.argv[1:]
+
+    if _wants_help(argv):
+        parser.parse_args(["--help"])
+        return 0  # unreachable: parse_args exits
+
+    if argv and argv[0].startswith("-") and argv[0] != "--":
+        # Decided before parsing, so argparse never gets a chance to print a
+        # usage error we are about to ignore. Only the first argument is
+        # ambiguous; after real text a leading dash is a genuine flag attempt
+        # and stays an error.
+        words = argv
+    else:
+        # Handles "--" itself, and still reports unknown flags after text.
+        words = parser.parse_args(argv).text
+
+    if words:
+        source = " ".join(words)
     else:
         source = sys.stdin.read()
 

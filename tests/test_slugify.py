@@ -332,8 +332,59 @@ class CommandLine(unittest.TestCase):
         self.assertEqual(proc.returncode, 0)
         self.assertIn("usage", proc.stdout.lower())
 
-    def test_unknown_flag_exits_two(self):
-        proc = subprocess.run([*CLI, "--nope"], capture_output=True, text=True)
+    def test_short_help_flag(self):
+        proc = subprocess.run([*CLI, "-h"], capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 0)
+        self.assertIn("usage", proc.stdout.lower())
+
+
+class LeadingDashes(unittest.TestCase):
+    """A leading dash is content, not a flag.
+
+    Hyphens are what this tool emits, so `slugify '---'` is an ordinary call.
+    argparse cannot express "a positional that may begin with a dash" and would
+    reject it with exit 2. -h/--help are the only flags, so anything else
+    starting with a dash is text.
+    """
+
+    def run_cli(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([*CLI, *args], capture_output=True, text=True)
+
+    def test_hyphens_only_is_empty_not_an_error(self):
+        proc = self.run_cli("---")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout, "")
+
+    def test_leading_hyphen_with_text(self):
+        self.assertEqual(self.run_cli("-tagged").stdout, "tagged\n")
+
+    def test_unknown_looking_flag_is_text(self):
+        proc = self.run_cli("--nope")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout, "nope\n")
+
+    def test_single_hyphen_is_empty(self):
+        self.assertEqual(self.run_cli("-").stdout, "")
+
+    def test_double_dash_marker_still_separates_options(self):
+        """`slugify -- -h` slugifies -h rather than printing help."""
+        proc = self.run_cli("--", "-h")
+        self.assertEqual(proc.returncode, 0)
+        self.assertEqual(proc.stdout, "h\n")
+
+    def test_no_usage_noise_on_stderr(self):
+        """Text that looks like a flag must not print a usage error."""
+        for arg in ("---", "--nope", "-tagged"):
+            with self.subTest(arg=arg):
+                self.assertEqual(self.run_cli(arg).stderr, "")
+
+    def test_help_still_wins_at_position_zero(self):
+        self.assertIn("usage", self.run_cli("-h").stdout.lower())
+        self.assertIn("usage", self.run_cli("--help").stdout.lower())
+
+    def test_flag_after_real_text_is_still_an_error(self):
+        """Only the first argument is ambiguous; after text a flag is a flag."""
+        proc = self.run_cli("Hello", "--nope")
         self.assertEqual(proc.returncode, 2)
         self.assertIn("usage", proc.stderr.lower())
 
