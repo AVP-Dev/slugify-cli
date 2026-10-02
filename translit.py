@@ -5,8 +5,17 @@ Two dictionaries live here:
 ``CYRILLIC``
     Cyrillic letters (Russian, Ukrainian, Belarusian, plus the common
     Serbian/Macedonian extras) mapped to the Latin spelling used by most URL
-    slug generators. Soft sign and hard sign are deliberately absent: they are
-    not pronounced and would only add noise to a slug.
+    slug generators.
+
+    Soft sign and hard sign map to the empty string *on purpose, and must stay
+    in the table*. They are unpronounced, so they belong in no slug -- but
+    deleting the keys would be a bug, not a cleanup: an unmapped character is
+    not dropped, it survives until the separator pass and becomes a hyphen.
+    ``пальто`` would become ``pal-to`` and ``объект`` ``ob-ekt``. Mapping them
+    to ``""`` removes them; omitting them does not.
+
+    Every key here is lowercase, which is why :func:`slugify.slugify` lowercases
+    its input before looking anything up.
 
 ``LIGATURES``
     Latin letters that NFKD does *not* decompose. These must be folded *before*

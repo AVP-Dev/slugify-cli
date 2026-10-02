@@ -16,9 +16,12 @@ become unreachable -- ``ї`` would transliterate as ``i`` instead of ``yi``.
 Transliterating first removes all Cyrillic from the string, leaving step 4 with
 nothing but Latin diacritics to fold, which is what it is good at.
 
-Lowercasing comes first for the same reason: ``É`` must reach step 4 as ``É`` so
-that NFKD splits it into ``E`` plus a combining acute, rather than arriving at
-step 3 as something needing transliteration.
+Lowercasing comes first because every key in both tables is lowercase, so
+uppercase input would otherwise miss the tables entirely and be destroyed by
+step 5: ``ПРИВЕТ`` would slug to ``""`` and ``Привет`` to ``rivet``, the ``П``
+being eaten. It also matters for accented capitals: ``É`` must become ``é``
+before step 4 so that NFKD splits it into ``e`` plus a combining acute, rather
+than into ``E``, which is not in ``[a-z0-9]`` and would become a hyphen.
 
 Step 5 handles "collapse repeated hyphens" and "strip edge hyphens" at once,
 because the ``+`` quantifier turns every run of separators into exactly one

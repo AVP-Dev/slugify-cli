@@ -184,6 +184,56 @@ class Transliteration(unittest.TestCase):
                     unicodedata.normalize("NFKD", value), value, value
                 )
 
+    def test_tables_do_not_overlap(self):
+        """Static-data invariant, also asserted at import in slugify.py.
+
+        The module-level assert is stripped under ``python -O``, so the check is
+        repeated here where it holds regardless of how the suite is run. If a
+        character ever lands in both tables, the result would depend on step
+        order rather than on intent.
+        """
+        from translit import CYRILLIC, LIGATURES
+
+        self.assertEqual(CYRILLIC.keys() & LIGATURES.keys(), set())
+
+    def test_table_keys_are_lowercase(self):
+        """slugify() lowercases before lookup, so the tables must be lowercase."""
+        from translit import CYRILLIC, LIGATURES
+
+        for letter in list(CYRILLIC) + list(LIGATURES):
+            with self.subTest(letter=letter):
+                self.assertEqual(letter, letter.lower())
+
+    def test_uppercase_cyrillic_is_not_lost(self):
+        """Regression for the tables being lowercase-only.
+
+        Without an early str.lower(), uppercase Cyrillic misses the table and is
+        destroyed by the separator pass: ПРИВЕТ -> '' and Привет -> 'rivet'.
+        """
+        self.assertEqual(slugify("ПРИВЕТ"), "privet")
+        self.assertEqual(slugify("Привет"), "privet")
+        self.assertEqual(slugify("ПРИВЕТ МИР"), "privet-mir")
+
+    def test_accented_capitals_survive(self):
+        """É must be lowercased before NFKD, or it becomes a hyphen."""
+        self.assertEqual(slugify("ÉTÉ"), "ete")
+        self.assertEqual(slugify("CAFÉ"), "cafe")
+
+    def test_soft_and_hard_signs_stay_in_the_table(self):
+        """They must map to "" rather than be deleted.
+
+        An unmapped character is not dropped -- it survives to the separator
+        pass and becomes a hyphen. Deleting these keys would give pal-to.
+        """
+        from translit import CYRILLIC
+
+        self.assertEqual(CYRILLIC["ь"], "")
+        self.assertEqual(CYRILLIC["ъ"], "")
+        self.assertEqual(slugify("пальто"), "palto")
+        self.assertEqual(slugify("съезд"), "sezd")
+        self.assertEqual(slugify("объект"), "obekt")
+        self.assertEqual(slugify("ь"), "")
+
     def test_table_covers_the_whole_alphabet(self):
         from translit import CYRILLIC
 
