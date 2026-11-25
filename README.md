@@ -175,3 +175,9 @@ before editing step order:
   be decomposed by NFKD.
 
 Reintroducing the wrong order fails 9 tests.
+
+---
+
+<div align="center">
+<sub>AVPdev · Software Development &amp; Automation · <a href="https://avpdev.com/">avpdev.com</a></sub>
+</div>
